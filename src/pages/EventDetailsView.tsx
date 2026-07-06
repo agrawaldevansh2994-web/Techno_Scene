@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Calendar, MapPin, Clock, ExternalLink, PlayCircle, Loader2, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import GoingModal, { type GoingData } from '../components/GoingModal';
+import GoingModal from '../components/GoingModal';
 import type { AppEvent } from '../types';
 
 const GENRE_COLORS: Record<string, string> = {
