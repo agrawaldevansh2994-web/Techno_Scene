@@ -31,7 +31,6 @@ const EventDetailsView = () => {
   const [error, setError] = useState<string | null>(null);
   const [isGoing, setIsGoing] = useState(false);
   const [showGoingModal, setShowGoingModal] = useState(false);
-  const [attendeeData, setAttendeeData] = useState<GoingData | null>(null);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -220,7 +219,6 @@ const EventDetailsView = () => {
             onClick={() => {
               if (isGoing) {
                 setIsGoing(false);
-                setAttendeeData(null);
               } else {
                 setShowGoingModal(true);
               }
@@ -275,7 +273,6 @@ const EventDetailsView = () => {
           eventTitle={event.title}
           onClose={() => setShowGoingModal(false)}
           onConfirm={(data) => {
-            setAttendeeData(data);
             setIsGoing(true);
             setShowGoingModal(false);
             console.log("Attendee Data Saved locally:", data);
