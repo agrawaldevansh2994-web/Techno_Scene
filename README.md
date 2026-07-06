@@ -1,5 +1,7 @@
 # India Electronic Scene (IES) 🎵
 
+🌍 **Live Demo:** [techno-scene.vercel.app](https://techno-scene.vercel.app/)
+
 A premium, curated platform for discovering the best techno, house, and electronic music events across India. 
 Currently launching in Mumbai, with Bangalore, Pune, and Goa coming soon.
 
