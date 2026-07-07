@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, User, Phone, Camera, Globe, Lock, Users } from 'lucide-react';
+import { X, User, Phone, Camera, Globe, Lock, Users, MessageSquare } from 'lucide-react';
 import type { Profile } from '../types';
 
 interface GoingModalProps {
@@ -14,6 +14,7 @@ export interface GoingData {
   name: string;
   whatsapp?: string;
   instagram?: string;
+  reddit?: string;
   visibility: 'name-only' | 'show-all' | 'selective';
 }
 
@@ -45,6 +46,7 @@ const GoingModal = ({ eventTitle, profile, onClose, onConfirm, loading = false }
   const [name, setName] = useState(profile?.name || '');
   const [whatsapp, setWhatsapp] = useState(profile?.whatsapp || '');
   const [instagram, setInstagram] = useState(profile?.instagram || '');
+  const [reddit, setReddit] = useState(profile?.reddit || '');
   const [visibility, setVisibility] = useState<GoingData['visibility']>(
     (profile?.default_visibility as GoingData['visibility']) || 'name-only'
   );
@@ -59,6 +61,7 @@ const GoingModal = ({ eventTitle, profile, onClose, onConfirm, loading = false }
       name: name.trim(),
       whatsapp: whatsapp.trim() || undefined,
       instagram: instagram.trim() || undefined,
+      reddit: reddit.trim() || undefined,
       visibility,
     });
   };
@@ -181,6 +184,34 @@ const GoingModal = ({ eventTitle, profile, onClose, onConfirm, loading = false }
                   placeholder="@yourhandle"
                   value={instagram}
                   onChange={e => setInstagram(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 rounded-xl text-sm text-white placeholder-gray-600 outline-none transition-all"
+                  style={{
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                  }}
+                  onFocus={e => (e.target.style.borderColor = '#7c3aed')}
+                  onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.08)')}
+                />
+              </div>
+            </div>
+
+            {/* Reddit */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Reddit <span className="text-gray-600 normal-case font-normal tracking-normal">optional</span>
+                </label>
+                <span className="flex items-center gap-1 text-[10px] text-gray-600">
+                  <Lock className="w-2.5 h-2.5" /> Not shown unless you choose
+                </span>
+              </div>
+              <div className="relative">
+                <MessageSquare className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
+                <input
+                  type="text"
+                  placeholder="u/yourusername"
+                  value={reddit}
+                  onChange={e => setReddit(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 rounded-xl text-sm text-white placeholder-gray-600 outline-none transition-all"
                   style={{
                     background: 'rgba(255,255,255,0.05)',

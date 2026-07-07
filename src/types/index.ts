@@ -17,6 +17,7 @@ export interface Profile {
   name: string;
   instagram?: string | null;
   whatsapp?: string | null;
+  reddit?: string | null;
   default_visibility?: 'name-only' | 'show-all' | 'selective' | null;
 }
 

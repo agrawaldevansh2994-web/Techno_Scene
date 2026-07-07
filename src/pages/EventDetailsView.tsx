@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Clock, ExternalLink, PlayCircle, Loader2, Check, User, Camera, Phone } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Clock, ExternalLink, PlayCircle, Loader2, Check, User, Camera, Phone, MessageSquare } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import GoingModal from '../components/GoingModal';
@@ -137,6 +137,7 @@ const EventDetailsView = () => {
         name: data.name,
         instagram: data.instagram || null,
         whatsapp: data.whatsapp || null,
+        reddit: data.reddit || null,
         default_visibility: data.visibility,
       }, { onConflict: 'id' });
 
@@ -339,7 +340,7 @@ const EventDetailsView = () => {
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-white truncate">{p.name}</p>
-                        {att.visibility === 'show-all' && (p.instagram || p.whatsapp) && (
+                        {att.visibility === 'show-all' && (p.instagram || p.whatsapp || p.reddit) && (
                           <div className="flex items-center gap-2 mt-1">
                             {p.instagram && (
                               <a
@@ -363,6 +364,18 @@ const EventDetailsView = () => {
                               >
                                 <Phone className="w-3 h-3" />
                                 <span className="truncate max-w-[100px]">{p.whatsapp}</span>
+                              </a>
+                            )}
+                            {p.reddit && (
+                              <a
+                                href={`https://reddit.com/${p.reddit.startsWith('u/') ? p.reddit : `u/${p.reddit}`}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-orange-400 transition-colors"
+                                title={p.reddit}
+                              >
+                                <MessageSquare className="w-3 h-3" />
+                                <span className="truncate max-w-[100px]">{p.reddit.replace('u/', '')}</span>
                               </a>
                             )}
                           </div>
