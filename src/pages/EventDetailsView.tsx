@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Clock, ExternalLink, PlayCircle, Loader2, Check } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Clock, ExternalLink, PlayCircle, Loader2, Check, User, Camera, Phone } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import GoingModal from '../components/GoingModal';
-import type { AppEvent } from '../types';
+import AuthModal from '../components/AuthModal';
+import type { GoingData } from '../components/GoingModal';
+import type { AppEvent, EventAttendee } from '../types';
 
 const GENRE_COLORS: Record<string, string> = {
   'Techno': '#ef4444',
@@ -26,12 +29,25 @@ const getGenreColor = (genre: string) => {
 
 const EventDetailsView = () => {
   const { id } = useParams<{ id: string }>();
+  const { user, profile, refreshProfile } = useAuth();
+
   const [event, setEvent] = useState<AppEvent | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // RSVP state
   const [isGoing, setIsGoing] = useState(false);
   const [showGoingModal, setShowGoingModal] = useState(false);
+  const [savingRsvp, setSavingRsvp] = useState(false);
 
+  // Auth modal (shown when unauthenticated user clicks "I'm Going")
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Attendees
+  const [attendees, setAttendees] = useState<EventAttendee[]>([]);
+  const [loadingAttendees, setLoadingAttendees] = useState(false);
+
+  // ── Fetch event ──────────────────────────────────────────
   useEffect(() => {
     const fetchEvent = async () => {
       if (!id) return;
@@ -54,6 +70,108 @@ const EventDetailsView = () => {
     fetchEvent();
   }, [id]);
 
+  // ── Fetch attendees ──────────────────────────────────────
+  const fetchAttendees = useCallback(async () => {
+    if (!id) return;
+    setLoadingAttendees(true);
+    try {
+      const { data } = await supabase
+        .from('event_attendees')
+        .select('*, profiles(*)')
+        .eq('event_id', id)
+        .order('created_at', { ascending: true });
+      setAttendees(data ?? []);
+    } catch {
+      // Silently fail — attendees section is non-critical
+    } finally {
+      setLoadingAttendees(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchAttendees();
+  }, [fetchAttendees]);
+
+  // ── Check if the current user already RSVP'd ────────────
+  useEffect(() => {
+    if (!user || !id) {
+      setIsGoing(false);
+      return;
+    }
+    const checkRsvp = async () => {
+      const { data } = await supabase
+        .from('event_attendees')
+        .select('id')
+        .eq('event_id', id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      setIsGoing(!!data);
+    };
+    checkRsvp();
+  }, [user, id]);
+
+  // ── Handle "I'm Going" click ─────────────────────────────
+  const handleGoingClick = () => {
+    if (!user) {
+      // Not logged in → show auth modal first
+      setShowAuthModal(true);
+      return;
+    }
+    if (isGoing) {
+      // Already going → un-RSVP
+      handleUnRsvp();
+    } else {
+      setShowGoingModal(true);
+    }
+  };
+
+  // ── Submit RSVP ──────────────────────────────────────────
+  const handleRsvpConfirm = async (data: GoingData) => {
+    if (!user || !id) return;
+    setSavingRsvp(true);
+
+    try {
+      // 1. Upsert profile (update name, contact, default_visibility)
+      await supabase.from('profiles').upsert({
+        id: user.id,
+        name: data.name,
+        instagram: data.instagram || null,
+        whatsapp: data.whatsapp || null,
+        default_visibility: data.visibility,
+      }, { onConflict: 'id' });
+
+      // 2. Insert attendee row
+      await supabase.from('event_attendees').upsert({
+        event_id: id,
+        user_id: user.id,
+        visibility: data.visibility,
+      }, { onConflict: 'event_id,user_id' });
+
+      // 3. Refresh local state
+      setIsGoing(true);
+      setShowGoingModal(false);
+      await refreshProfile();
+      await fetchAttendees();
+    } catch (err) {
+      console.error('RSVP failed:', err);
+    } finally {
+      setSavingRsvp(false);
+    }
+  };
+
+  // ── Un-RSVP ──────────────────────────────────────────────
+  const handleUnRsvp = async () => {
+    if (!user || !id) return;
+    await supabase
+      .from('event_attendees')
+      .delete()
+      .eq('event_id', id)
+      .eq('user_id', user.id);
+    setIsGoing(false);
+    await fetchAttendees();
+  };
+
+  // ── Render ───────────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -123,7 +241,7 @@ const EventDetailsView = () => {
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Left: Description + Set Archive */}
+        {/* Left: Description + Set Archive + Attendees */}
         <div className="lg:col-span-2 space-y-8">
           <section>
             <h2
@@ -163,6 +281,98 @@ const EventDetailsView = () => {
               </div>
             </section>
           )}
+
+          {/* ═══════════ WHO'S GOING SECTION ═══════════ */}
+          <section>
+            <div className="flex items-center gap-2 mb-5">
+              <User className="w-4 h-4" style={{ color }} />
+              <h2
+                className="text-xs font-bold tracking-widest uppercase"
+                style={{ color, fontFamily: "'Space Grotesk', sans-serif" }}
+              >
+                Who's Going
+              </h2>
+              {attendees.length > 0 && (
+                <span
+                  className="ml-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: `${color}20`, color }}
+                >
+                  {attendees.length}
+                </span>
+              )}
+            </div>
+
+            {loadingAttendees ? (
+              <div className="flex items-center gap-2 text-gray-600 text-sm">
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading...
+              </div>
+            ) : attendees.length === 0 ? (
+              <div
+                className="rounded-2xl p-6 text-center"
+                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
+              >
+                <p className="text-gray-500 text-sm">No one has RSVP'd yet. Be the first!</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {attendees.map((att) => {
+                  const p = att.profiles;
+                  if (!p) return null;
+
+                  return (
+                    <div
+                      key={att.id}
+                      className="flex items-center gap-3 p-3 rounded-xl transition-all hover:scale-[1.01]"
+                      style={{
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.07)',
+                      }}
+                    >
+                      {/* Avatar */}
+                      <div
+                        className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ background: `${color}15` }}
+                      >
+                        <User className="w-4 h-4" style={{ color }} />
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-white truncate">{p.name}</p>
+                        {att.visibility === 'show-all' && (p.instagram || p.whatsapp) && (
+                          <div className="flex items-center gap-2 mt-1">
+                            {p.instagram && (
+                              <a
+                                href={`https://instagram.com/${p.instagram.replace('@', '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-pink-400 transition-colors"
+                                title={`@${p.instagram.replace('@', '')}`}
+                              >
+                                <Camera className="w-3 h-3" />
+                                <span className="truncate max-w-[80px]">{p.instagram.replace('@', '')}</span>
+                              </a>
+                            )}
+                            {p.whatsapp && (
+                              <a
+                                href={`https://wa.me/${p.whatsapp.replace(/\D/g, '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-green-400 transition-colors"
+                                title={p.whatsapp}
+                              >
+                                <Phone className="w-3 h-3" />
+                              </a>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         </div>
 
         {/* Right: Sidebar */}
@@ -216,13 +426,7 @@ const EventDetailsView = () => {
 
           {/* CTAs */}
           <button
-            onClick={() => {
-              if (isGoing) {
-                setIsGoing(false);
-              } else {
-                setShowGoingModal(true);
-              }
-            }}
+            onClick={handleGoingClick}
             className="btn-going w-full py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all"
             style={
               isGoing
@@ -268,14 +472,25 @@ const EventDetailsView = () => {
         </div>
       </div>
 
+      {/* Going Modal */}
       {showGoingModal && event && (
         <GoingModal
           eventTitle={event.title}
+          profile={profile}
+          loading={savingRsvp}
           onClose={() => setShowGoingModal(false)}
-          onConfirm={(data) => {
-            setIsGoing(true);
-            setShowGoingModal(false);
-            console.log("Attendee Data Saved locally:", data);
+          onConfirm={handleRsvpConfirm}
+        />
+      )}
+
+      {/* Auth Modal (when unauthenticated user tries to RSVP) */}
+      {showAuthModal && (
+        <AuthModal
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={() => {
+            setShowAuthModal(false);
+            // After login, open the going modal
+            setShowGoingModal(true);
           }}
         />
       )}

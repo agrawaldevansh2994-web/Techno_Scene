@@ -42,8 +42,8 @@ const AuthModal = ({ onClose, onSuccess }: AuthModalProps) => {
         // If signup is successful and auto-login doesn't happen, we might need to wait for email confirm.
         // For now, assuming email confirmation is disabled or we auto-login.
         if (data.user) {
-          // Create profile if necessary (can also be done via Postgres trigger)
-          await supabase.from('profiles').insert([{ id: data.user.id, name }]);
+          // Upsert profile — safe to call even if row already exists
+          await supabase.from('profiles').upsert({ id: data.user.id, name }, { onConflict: 'id' });
         }
       }
       onSuccess();

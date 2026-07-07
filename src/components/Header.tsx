@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { User, LogOut } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
 
 const CITIES = ['Mumbai', 'Bangalore', 'Pune', 'Goa'];
@@ -10,20 +11,8 @@ const Header = () => {
   const location = useLocation();
   const isHome = location.pathname === '/';
   
-  const [user, setUser] = useState<any>(null);
+  const { user } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

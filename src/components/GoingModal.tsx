@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { X, User, Phone, Camera, Globe, Lock, Users } from 'lucide-react';
+import type { Profile } from '../types';
 
 interface GoingModalProps {
   eventTitle: string;
+  profile?: Profile | null;
   onClose: () => void;
   onConfirm: (data: GoingData) => void;
+  loading?: boolean;
 }
 
 export interface GoingData {
@@ -20,26 +23,31 @@ const VISIBILITY_OPTIONS = [
     icon: User,
     label: 'Just my name',
     description: 'Only your name is visible to other attendees. Nothing else.',
+    disabled: false,
   },
   {
     id: 'show-all' as const,
     icon: Globe,
     label: 'Open to connect',
     description: 'Your name + any contact you filled is visible to all other attendees of this event.',
+    disabled: false,
   },
   {
     id: 'selective' as const,
     icon: Users,
     label: 'Choose who sees me',
-    description: 'You\'ll see who\'s going and can choose to share your contact with specific people only.',
+    description: 'Coming soon — request-based sharing in a future update.',
+    disabled: true,
   },
 ];
 
-const GoingModal = ({ eventTitle, onClose, onConfirm }: GoingModalProps) => {
-  const [name, setName] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
-  const [instagram, setInstagram] = useState('');
-  const [visibility, setVisibility] = useState<GoingData['visibility']>('name-only');
+const GoingModal = ({ eventTitle, profile, onClose, onConfirm, loading = false }: GoingModalProps) => {
+  const [name, setName] = useState(profile?.name || '');
+  const [whatsapp, setWhatsapp] = useState(profile?.whatsapp || '');
+  const [instagram, setInstagram] = useState(profile?.instagram || '');
+  const [visibility, setVisibility] = useState<GoingData['visibility']>(
+    (profile?.default_visibility as GoingData['visibility']) || 'name-only'
+  );
   const [nameError, setNameError] = useState(false);
 
   const handleConfirm = () => {
@@ -197,21 +205,25 @@ const GoingModal = ({ eventTitle, onClose, onConfirm }: GoingModalProps) => {
                     <button
                       key={opt.id}
                       type="button"
-                      onClick={() => setVisibility(opt.id)}
-                      className="w-full flex items-start gap-3 p-3 rounded-xl text-left transition-all"
+                      onClick={() => !opt.disabled && setVisibility(opt.id)}
+                      className={`w-full flex items-start gap-3 p-3 rounded-xl text-left transition-all ${opt.disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
                       style={{
-                        background: isSelected ? 'rgba(124,58,237,0.1)' : 'rgba(255,255,255,0.03)',
-                        border: isSelected ? '1px solid rgba(124,58,237,0.4)' : '1px solid rgba(255,255,255,0.06)',
+                        background: isSelected && !opt.disabled ? 'rgba(124,58,237,0.1)' : 'rgba(255,255,255,0.03)',
+                        border: isSelected && !opt.disabled ? '1px solid rgba(124,58,237,0.4)' : '1px solid rgba(255,255,255,0.06)',
                       }}
+                      disabled={opt.disabled}
                     >
                       <div
                         className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                        style={{ background: isSelected ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.06)' }}
+                        style={{ background: isSelected && !opt.disabled ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.06)' }}
                       >
-                        <Icon className="w-3.5 h-3.5" style={{ color: isSelected ? '#a78bfa' : 'rgba(255,255,255,0.3)' }} />
+                        <Icon className="w-3.5 h-3.5" style={{ color: isSelected && !opt.disabled ? '#a78bfa' : 'rgba(255,255,255,0.3)' }} />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-white">{opt.label}</p>
+                        <p className="text-sm font-semibold text-white">
+                          {opt.label}
+                          {opt.disabled && <span className="ml-2 text-[10px] font-normal text-gray-600 uppercase tracking-wider">soon</span>}
+                        </p>
                         <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{opt.description}</p>
                       </div>
                     </button>
@@ -232,14 +244,15 @@ const GoingModal = ({ eventTitle, onClose, onConfirm }: GoingModalProps) => {
             </button>
             <button
               onClick={handleConfirm}
-              className="flex-1 py-3 rounded-xl text-sm font-bold transition-all"
+              disabled={loading}
+              className="flex-1 py-3 rounded-xl text-sm font-bold transition-all disabled:opacity-70"
               style={{
                 background: 'linear-gradient(135deg, #7c3aed, #5b21b6)',
                 color: '#fff',
                 boxShadow: '0 0 20px rgba(124,58,237,0.4)',
               }}
             >
-              I'm Going ✓
+              {loading ? 'Saving...' : "I'm Going ✓"}
             </button>
           </div>
         </div>
