@@ -362,6 +362,7 @@ const EventDetailsView = () => {
                                 title={p.whatsapp}
                               >
                                 <Phone className="w-3 h-3" />
+                                <span className="truncate max-w-[100px]">{p.whatsapp}</span>
                               </a>
                             )}
                           </div>
