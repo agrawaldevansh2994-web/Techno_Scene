@@ -40,3 +40,10 @@ On the Event Details page, underneath the main details, we add a new section: **
 - User A gets a notification (in-app or email) saying "User B wants to connect for [Event Name]".
 - If User A accepts, User B gets access to their Instagram/WhatsApp link.
 - *Simpler alternative for MVP*: Just stick to `name-only` and `show-all` for V1, and add `selective` in V2 once auth is stable.
+
+## 5. "Raver Status" / Vibe Tags
+To make connecting even easier, we can let users tag how they are attending the event.
+- **Solo**: Going alone, looking to vibe with others.
+- **Group**: Going with a crew.
+- **Open to Solo**: Going with a group, but happy to adopt a solo raver.
+- **Implementation**: Add an optional tag selection to the RSVP modal and display it as a small badge next to their name in the "Who's Going" section. This instantly helps solo ravers find each other and reduces the friction of reaching out.
